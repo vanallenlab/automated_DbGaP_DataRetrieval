@@ -16,6 +16,7 @@ workflow downloadDbgapFiles {
 
     output {
         downloadDbgapFilesTask.bam
+        downloadDbgapFilesTask.bam_index
     }
 }
 
@@ -42,14 +43,23 @@ task downloadDbgapFilesTask {
         echo "prefetch -t ascp -a /usr/bin/ascp|/home/data/.aspera/connect/etc/asperaweb_id_dsa.openssh ${srrId}"
         prefetch -t ascp -a "/usr/bin/ascp|/home/data/.aspera/connect/etc/asperaweb_id_dsa.openssh" ${srrId}
 
-        echo "sam-dump ${srrId} | samtools view -bS - > ${srrId}.bam"
-        sam-dump ${srrId} | samtools view -bS - > ${srrId}.bam
+        echo "sam-dump --header ${srrId} | samtools view -bS - > ${srrId}.bam"
+        sam-dump --header ${srrId} | samtools view -bS - > ${srrId}.bam
 
 		echo "ls -lh"
         ls -lh
 
+        echo "samtools view -H ${srrId}.bam"
+        samtools view -H ${srrId}.bam
+
+        echo "samtools index ${srrId}.bam"
+        samtools index ${srrId}.bam
+
 		echo "mv ${srrId}.bam /cromwell_root/"
 		mv ${srrId}.bam /cromwell_root/
+
+        echo "mv ${srrId}.bam.bai /cromwell_root/"
+        mv ${srrId}.bam.bai /cromwell_root/
 
         echo "ls -lh /cromwell_root/"
         ls -lh /cromwell_root/
@@ -57,6 +67,7 @@ task downloadDbgapFilesTask {
 
     output {
         File bam="${srrId}.bam"
+        File bam_index="${srrId}.bam.bai"
     }
 
     runtime {
