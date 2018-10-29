@@ -1,11 +1,12 @@
 # automated_DbGaP_DataRetrieval
 FireCloud methods that Retrieves DbGaP SRA files and converts them to BAM files (https://portal.firecloud.org/#methods/ekofman/dbgapDownloads/9)
+Docker image: https://hub.docker.com/r/vanallenlab/dbgap/tags/
 
 # Example
 Launch docker with mounted ngc file:
 
 
-	docker run -it -v /path/to/mount/1000_genomes_test_data.ngc:example.ngc vanallenlab/aspera:1.0
+	docker run -it -v /path/to/mount/1000_genomes_test_data.ngc:example.ngc dbgap/dbgap:1.0
 
 
 Input credentials using vdb config:
