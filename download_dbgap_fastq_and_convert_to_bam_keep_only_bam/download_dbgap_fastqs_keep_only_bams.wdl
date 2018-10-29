@@ -1,83 +1,111 @@
-FROM ubuntu:18.10
+workflow downloadDbgapFiles {
+    File ngcFilePath
+    String projectFolderName
+    String srrId
+    String sampleName
+    Int diskSpace
+    Int memory
+    Int cpu
+    File refFasta
 
+    call downloadDbgapFilesTask {
+    	input:
+        	ngcFilePath=ngcFilePath,
+        	projectFolderName=projectFolderName,
+        	srrId=srrId,
+        	sampleName=sampleName,
+        	diskSpace=diskSpace,
+        	memory=memory,
+        	cpu=cpu,
+        	refFasta=refFasta
+    }
 
+    output {
+        BwaAlignment.aligned_bwa_bam
+        BwaAlignment.aligned_bwa_bam_index
+    }
+}
 
-RUN mv /etc/apt/sources.list /etc/apt/sources.list.bkp && \
-    bash -c 'echo -e "deb mirror://mirrors.ubuntu.com/mirrors.txt xenial main restricted universe multiverse\n\
-deb mirror://mirrors.ubuntu.com/mirrors.txt xenial-updates main restricted universe multiverse\n\
-deb mirror://mirrors.ubuntu.com/mirrors.txt xenial-backports main restricted universe multiverse\n\
-deb mirror://mirrors.ubuntu.com/mirrors.txt xenial-security main restricted universe multiverse\n\n" > /etc/apt/sources.list' && \
-    cat /etc/apt/sources.list.bkp >> /etc/apt/sources.list && \
-    cat /etc/apt/sources.list
+task downloadDbgapFilesTask {
+    File ngcFilePath
+    String projectFolderName
+    String srrId
+    String sampleName
+    Int diskSpace
+    Int cpu
+    File refFasta
+    Int memory
 
-RUN apt-get clean all && \
-    apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y  \
-        autotools-dev   \
-        automake        \
-        cmake           \
-        curl            \
-        grep            \
-        sed             \
-        dpkg            \
-        fuse            \
-        git             \
-        wget            \
-        zip             \
-        openjdk-8-jre   \
-        build-essential \
-        pkg-config      \
-        python          \
-	python-dev      \
-        python-pip      \
-        bzip2           \
-        ca-certificates \
-        libglib2.0-0    \
-        libxext6        \
-        libsm6          \
-        libxrender1     \
-        git             \
-        mercurial       \
-        subversion      \
-        zlib1g-dev &&   \
-        apt-get clean && \
-        apt-get purge && \
-        rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    command <<<
+        # log resource usage for debugging purposes
+       	function runtimeInfo() {
+        	echo [$(date)]
+        	echo \* CPU usage: $(top -bn 2 -d 0.01 | grep '^%Cpu' | tail -n 1 | awk '{print $2}')%
+        	echo \* Memory usage: $(free -m | grep Mem | awk '{ OFMT="%.0f"; print ($3/$2)*100; }')%
+        	echo \* Disk usage: $(df | grep cromwell_root | awk '{ print $5 }')
+        }
+        while true;
+        	do runtimeInfo;
+           	sleep 15;
+       	done &
 
-RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
-    wget --quiet https://repo.continuum.io/miniconda/Miniconda2-4.0.5-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    rm ~/miniconda.sh
+    	echo "Current directory and contents:"
+        pwd
+        ls -lh
 
-RUN TINI_VERSION=`curl https://github.com/krallin/tini/releases/latest | grep -o "/v.*\"" | sed 's:^..\(.*\).$:\1:'` && \
-    curl -L "https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini_${TINI_VERSION}.deb" > tini.deb && \
-    dpkg -i tini.deb && \
-    rm tini.deb && \
-    apt-get clean
+        cd /
 
-RUN mkdir /data /config
+        echo "vdb-config --import ${ngcFilePath}"
+        vdb-config --import ${ngcFilePath}
 
-# Add user biodocker with password biodocker
-RUN groupadd fuse && \
-    useradd --create-home --shell /bin/bash --user-group --uid 1000 --groups sudo,fuse biodocker && \
-    echo `echo "biodocker\nbiodocker\n" | passwd biodocker` && \
-    chown biodocker:biodocker /data && \
-    chown biodocker:biodocker /config
+        echo "cd /root/ncbi/${projectFolderName}"
+        cd /root/ncbi/${projectFolderName}
 
-# give write permissions to conda folder
-RUN chmod 777 -R /opt/conda/
+        echo "prefetch -t ascp -a /usr/bin/ascp|/home/data/.aspera/connect/etc/asperaweb_id_dsa.openssh ${srrId}"
+        prefetch -t ascp -a "/usr/bin/ascp|/home/data/.aspera/connect/etc/asperaweb_id_dsa.openssh" ${srrId}
 
-# Change user
-USER biodocker
+        echo "fastq-dump --split-files ${srrId}"
+        fastq-dump -F --split-files ${srrId}
 
-ENV PATH=$PATH:/opt/conda/bin
-ENV PATH=$PATH:/home/biodocker/bin
-ENV HOME=/home/biodocker
+		echo "ls -lh"
+        ls -lh
 
-RUN mkdir /home/biodocker/bin
+		# Now we have ${srrId}_1.fastq
+        # And we also have ${srrId}_2.fastq
 
-RUN conda config --add channels r
-RUN conda config --add channels bioconda
+        # Use bwa to align paired end fastq files
+        /usr/gitc/bwa index ${refFasta}
 
-RUN conda upgrade conda
+		/usr/gitc/bwa aln ${refFasta} -q 5 -l 32 -k 2 -t ${cpu} -o 1 -f ${sampleName}.Homo_sapiens_assembly19.1.sai ${srrId}_1.fastq
+
+		/usr/gitc/bwa aln ${refFasta} -q 5 -l 32 -k 2 -t ${cpu} -o 1 -f ${sampleName}.Homo_sapiens_assembly19.2.sai ${srrId}_2.fastq
+
+		/usr/gitc/bwa sampe -P -f ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sam ${refFasta} ${sampleName}.Homo_sapiens_assembly19.1.sai ${sampleName}.Homo_sapiens_assembly19.2.sai ${srrId}_1.fastq ${srrId}_2.fastq
+
+    	echo "samtools view -S -b ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sam > ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.bam"
+    	samtools view -S -b ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sam > ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.bam
+
+        echo "samtools sort -o ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sorted.bam ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.bam"
+    	samtools sort -o ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sorted.bam ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.bam
+
+        echo "samtools index ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.bam"
+        samtools index ${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sorted.bam
+
+        echo "ls -lh"
+        ls -lh
+    >>>
+
+	output {
+		File aligned_bwa_bam = "${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sorted.bam"
+        File aligned_bwa_bam_index = "${sampleName}.Homo_sapiens_assembly19.aligned_bwa.sorted.bam.bai"
+	}
+
+    runtime {
+    	docker: "vanallenlab/dbgap:2.0"
+        memory: "${memory} GB"
+        cpu: "${cpu}"
+        disks: "local-disk ${diskSpace} HDD"
+        bootDiskSizeGb: 60
+        preemptible: 5
+    }
+}
