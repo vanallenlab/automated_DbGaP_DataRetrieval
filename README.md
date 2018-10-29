@@ -33,3 +33,4 @@ Or, to download all files indicated in a .krt file:
 	prefetch -t ascp -a "/usr/bin/ascp|/home/data/.aspera/connect/etc/asperaweb_id_dsa.openssh" example.krt
 
 
+
