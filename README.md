@@ -1,5 +1,5 @@
 # automated_DbGaP_DataRetrieval
-FireCloud methods that Retrieves DbGaP SRA files and converts them to BAM files (https://portal.firecloud.org/#methods/ekofman/dbgapDownloads/9)
+FireCloud methods that Retrieves DbGaP SRA files and converts them to BAM files (https://portal.firecloud.org/#methods/ekofman/dbgapDownloads/20)
 Docker image: https://hub.docker.com/r/vanallenlab/dbgap/tags/
 
 # Example
