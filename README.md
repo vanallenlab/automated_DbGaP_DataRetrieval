@@ -1,4 +1,4 @@
-# automated_DbGaP_DataRetrieval
+# Automated dbGaP Data Retrieval
 FireCloud methods that Retrieves DbGaP SRA files and converts them to BAM files.
 
 Check in what format the SRA files were initially submitted to dbGaP. If you want to check whether a run is aligned you can run sra-stat on it:
