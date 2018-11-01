@@ -33,12 +33,12 @@ Launch docker with mounted ngc file:
 Input credentials using vdb config:
 
 
-	vdb-config --import mount/example.ngc
+	vdb-config --import example.ngc
 	output:
 		Repository directory is: '/root/ncbi/dbGaP-0'.
 
 
-cd to the appropriate directory:
+cd to the appropriate directory (prefetch only works from within the directory):
 
 
     cd /root/ncbi/dbGaP-0/
