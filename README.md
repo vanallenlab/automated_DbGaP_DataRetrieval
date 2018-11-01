@@ -21,7 +21,7 @@ There are 3 different methods on FireCloud to account for 3 different scenarios 
 * This stores and returns only bams
 
 # Docker
-The docker docker image for all of these methods is built automatically from the Dockerfile at the top level of this repository: https://hub.docker.com/r/vanallenlab/dbgap/. Never remove or move this Dockerfile from the top level of this repository or the docker build will break. This docker image contains bwa, the SRA Toolkit, Aspera, ascp, and samtools.
+The docker image for all of these methods is built automatically from the Dockerfile at the top level of this repository and can be found here: https://hub.docker.com/r/vanallenlab/dbgap/. Never remove or move this Dockerfile from the top level of this repository or the docker build will break. This docker image contains bwa, the SRA Toolkit, Aspera, ascp, and samtools.
 
 # Example
 Launch docker with mounted ngc file:
